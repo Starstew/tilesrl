@@ -3,7 +3,7 @@ var tilesrl = {
 	"mapTileWidth": 5,
 	"mapTileHeight": 5,
 	"defaultTiles": [
-		// [0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
+		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
 		// [0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
 		// [0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
 		// [0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
@@ -100,6 +100,35 @@ var tilesrl = {
 	"bakeMap": function() {
 		let flatMap = tilesrl.flattenMap(),
 			bakedMap = [];
+
+		// first pass, catch diagonals
+		for (let x = 0; x < flatMap.length; x++) {
+			for (let y = 0; y < flatMap[x].length; y++) {
+				let sq = flatMap[x][y],
+					isNorth = (y == 0),
+					isWest = (x == 0),
+					isEast = (x + 1 == flatMap.length),
+					isSouth = (y + 1 == flatMap[0].length),
+					sqAdj = [
+						(!isNorth && !isWest) ? flatMap[x - 1][y - 1] : 1, // 0 nw 
+						(!isNorth) ? flatMap[x][y - 1] : 1,                // 1 n
+						(!isNorth && !isEast) ? flatMap[x + 1][y - 1] : 1, // 2 ne
+						(!isEast) ? flatMap[x + 1][y] : 1,                 // 3 e
+						(!isSouth && !isEast) ? flatMap[x + 1][y + 1] : 1, // 4 se
+						(!isSouth) ? flatMap[x][y + 1] : 1,                // 5 s
+						(!isSouth && !isWest) ? flatMap[x - 1][y + 1] : 1, // 6 sw
+						(!isWest) ? flatMap[x - 1][y] : 1                  // 7 w
+					];
+
+				if ( (sqAdj[0] < 1 && (sqAdj[1] + sqAdj[7] == 2))
+					|| (sqAdj[2] < 1 && (sqAdj[1] + sqAdj[3] == 2))
+					|| (sqAdj[4] < 1 && (sqAdj[3] + sqAdj[5] == 2))
+					|| (sqAdj[6] < 1 && (sqAdj[5] + sqAdj[7] == 2))) {
+						flatMap[x][y] = 1; // a "dumb" change to wall (TODO: make it choosier? Such as not-blocking a corridor)
+				}
+			}
+		}
+
 		// traverse squares
 		for (let x = 0; x < flatMap.length; x++) {
 			bakedMap.push([]);
@@ -131,29 +160,6 @@ var tilesrl = {
 				if (isCorridor) {
 					bakeNumber = -1;
 				}
-
-
-				/**
-					NOTES: 
-					squaretypes
-					-1: corridor
-					0: floor
-					1: wall
-					2: wall-corner-nw
-					3: wall corner-ne
-					4: wall corner-se
-					5: wall corner-sw
-					6: wall ncap
-					7: wall ecap
-					8: wall scap
-					9: wall wcap
-					10: NS walls
-					11: EW walls
-					12: N wall
-					13: E wall
-					14: S wall
-					15: W wall
-				**/
 
 				// wall stuff
 				let isShallowWall = (sq == 1)
@@ -272,6 +278,12 @@ var tilesrl = {
 		}
 		tilesrl.drawMap();
 	},
+	"debugAddRandomTile": function() {
+		let stack = tilesrl.generateStartingTileStack(),
+			rots = ["rot0","rot90","rot180","rot270"];
+		tilesrl.commitTileToMap(tilesrl.getRandomFromArray(stack)[tilesrl.getRandomFromArray(rots)], Math.floor(Math.random()*5), Math.floor(Math.random()*5));
+		tilesrl.drawMap();
+	},
 
 	/** helpers **/
 	"getRandomFromArray": function(a) {
@@ -283,23 +295,23 @@ var tilesrl = {
 /**
 NOTES:
 squareClasses = {
-				"-1": "corridor",
-				"0": "floor",
-				"1": "wall",
-				"2": "wall nwcorn",
-				"3": "wall necorn",
-				"4": "wall secorn",
-				"5": "wall swcorn",
-				"6": "wall ncap",
-				"7": "wall ecap",
-				"8": "wall scap",
-				"9": "wall wcap",
-				"10": "wall walls_ns",
-				"11": "wall walls_ew",
-				"12": "wall wall_n",
-				"13": "wall wall_e",
-				"14": "wall wall_s",
-				"15": "wall wall_w"
-			};
+	"-1": "corridor",
+	"0": "floor",
+	"1": "wall",
+	"2": "wall nwcorn",
+	"3": "wall necorn",
+	"4": "wall secorn",
+	"5": "wall swcorn",
+	"6": "wall ncap",
+	"7": "wall ecap",
+	"8": "wall scap",
+	"9": "wall wcap",
+	"10": "wall walls_ns",
+	"11": "wall walls_ew",
+	"12": "wall wall_n",
+	"13": "wall wall_e",
+	"14": "wall wall_s",
+	"15": "wall wall_w"
+};
 
 **/
