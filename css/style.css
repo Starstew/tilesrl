@@ -6,7 +6,7 @@
 	display: inline-block;
 	width: 20px;
 	height: 20px;
-	xborder:1px solid rgba(0,0,255,0.15);
+	border: inset 1px rgba(200,200,200,0.2);
 }
 .testSquare.wall {
 	background-color: #111;
@@ -53,5 +53,5 @@
 				"15": "wall wall_w"
 */
 .testSquare.corridor {
-	background-color: #d99;
+	background-color: #afafaf;
 }

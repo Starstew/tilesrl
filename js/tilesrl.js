@@ -2,13 +2,18 @@ var tilesrl = {
 	"tileSize": 5,
 	"mapTileWidth": 5,
 	"mapTileHeight": 5,
+	"gameData": {},
+	"rotLabels": ["rot0","rot90","rot180","rot270"],
 	"defaultTiles": [
-		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
+		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0],   // "7"
 		// [0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
 		// [0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
 		// [0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
-		[1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
-		[1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1] // "rl"
+		[1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1],   // "7d"
+		[1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1],   // "rl"
+		[1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1],
+		[0,1,1,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,1,1,1,0],
+		[1,1,1,1,1,1,0,0,0,1,1,0,0,0,1,0,0,0,0,1,1,1,1,0,1]
 	],
 
 	/** functions **/
@@ -68,9 +73,8 @@ var tilesrl = {
 		}
 		return newMap;
 	},
-	"commitTileToMap": function(tileRot, x, y) {
-		tilesrl.levelMap = tilesrl.levelMap || tilesrl.generateEmptyLevelMap();
-		tilesrl.levelMap[x][y] = tileRot;
+	"commitTileToMap": function(levelMap, tileRot, x, y) {
+		levelMap[x][y] = tileRot;
 	},
 	"generateEmptyLevelMap": function() {
 		let levelMap = [];
@@ -83,14 +87,19 @@ var tilesrl = {
 		}
 		return levelMap;
 	},
-	"flattenMap": function() {
+	"flattenMap": function(tilemap) {
 		// concatenate all the levelMap tiles' arrays
 		let mapSquares = [];
-		for (let tx = 0; tx < tilesrl.mapTileWidth; tx++) {
+		if (!tilemap) {
+			return;
+		}
+		for (let tx = 0; tx < tilemap.length; tx++) {
 			for (let x = 0; x < tilesrl.tileSize; x++) {
 				let concatCol = [];	
-				for (let ty = 0; ty < tilesrl.mapTileHeight; ty++) {
-					concatCol = concatCol.concat(tilesrl.levelMap[tx][ty][x]);
+				for (let ty = 0; ty < tilemap[tx].length; ty++) {
+					if (tilemap[tx][ty]) {
+						concatCol = concatCol.concat(tilemap[tx][ty][x]);
+					}
 				}
 				mapSquares.push(concatCol);
 			}
@@ -98,37 +107,43 @@ var tilesrl = {
 		return mapSquares;
 	},
 	"bakeMap": function() {
-		let flatMap = tilesrl.flattenMap(),
+		let flatMap = tilesrl.flattenMap(tilesrl.gameData.levelMap),
 			bakedMap = [];
 
 		// first pass, catch diagonals
-		for (let x = 0; x < flatMap.length; x++) {
-			for (let y = 0; y < flatMap[x].length; y++) {
-				let sq = flatMap[x][y],
-					isNorth = (y == 0),
-					isWest = (x == 0),
-					isEast = (x + 1 == flatMap.length),
-					isSouth = (y + 1 == flatMap[0].length),
-					sqAdj = [
-						(!isNorth && !isWest) ? flatMap[x - 1][y - 1] : 1, // 0 nw 
-						(!isNorth) ? flatMap[x][y - 1] : 1,                // 1 n
-						(!isNorth && !isEast) ? flatMap[x + 1][y - 1] : 1, // 2 ne
-						(!isEast) ? flatMap[x + 1][y] : 1,                 // 3 e
-						(!isSouth && !isEast) ? flatMap[x + 1][y + 1] : 1, // 4 se
-						(!isSouth) ? flatMap[x][y + 1] : 1,                // 5 s
-						(!isSouth && !isWest) ? flatMap[x - 1][y + 1] : 1, // 6 sw
-						(!isWest) ? flatMap[x - 1][y] : 1                  // 7 w
-					];
-
-				if ( (sqAdj[0] < 1 && (sqAdj[1] + sqAdj[7] == 2))
-					|| (sqAdj[2] < 1 && (sqAdj[1] + sqAdj[3] == 2))
-					|| (sqAdj[4] < 1 && (sqAdj[3] + sqAdj[5] == 2))
-					|| (sqAdj[6] < 1 && (sqAdj[5] + sqAdj[7] == 2))) {
-						flatMap[x][y] = 1; // a "dumb" change to wall (TODO: make it choosier? Such as not-blocking a corridor)
+		let diagonalsScrubbed = false;
+		while(diagonalsScrubbed == false) {
+			diagonalsScrubbed = true;
+			for (let x = 0; x < flatMap.length; x++) {
+				for (let y = 0; y < flatMap[x].length; y++) {
+					let sq = flatMap[x][y],
+						isNorth = (y == 0),
+						isWest = (x == 0),
+						isEast = (x + 1 == flatMap.length),
+						isSouth = (y + 1 == flatMap[0].length),
+						sqAdj = [
+							(!isNorth && !isWest) ? flatMap[x - 1][y - 1] : 1, // 0 nw 
+							(!isNorth) ? flatMap[x][y - 1] : 1,                // 1 n
+							(!isNorth && !isEast) ? flatMap[x + 1][y - 1] : 1, // 2 ne
+							(!isEast) ? flatMap[x + 1][y] : 1,                 // 3 e
+							(!isSouth && !isEast) ? flatMap[x + 1][y + 1] : 1, // 4 se
+							(!isSouth) ? flatMap[x][y + 1] : 1,                // 5 s
+							(!isSouth && !isWest) ? flatMap[x - 1][y + 1] : 1, // 6 sw
+							(!isWest) ? flatMap[x - 1][y] : 1                  // 7 w
+						];
+					if (sq == 0) {
+						if ( (sqAdj[0] < 1 && (sqAdj[1] + sqAdj[7] == 2))
+							|| (sqAdj[2] < 1 && (sqAdj[1] + sqAdj[3] == 2))
+							|| (sqAdj[4] < 1 && (sqAdj[3] + sqAdj[5] == 2))
+							|| (sqAdj[6] < 1 && (sqAdj[5] + sqAdj[7] == 2)) ) {
+								flatMap[x][y] = 1; // a "dumb" change to wall (TODO: make it choosier? Such as not-blocking a corridor)
+								diagonalsScrubbed = false;
+						}
+					}
 				}
 			}
 		}
-
+		
 		// traverse squares
 		for (let x = 0; x < flatMap.length; x++) {
 			bakedMap.push([]);
@@ -232,11 +247,181 @@ var tilesrl = {
 		for (let y = 0; y < bakedMap[0].length; y++) {
 			for (let x = 0; x < bakedMap.length; x++) {
 				let sqClass = squareClasses[bakedMap[x][y]];
-				htmlOutput += "<div class='testSquare " + sqClass + "'> </div>";
+				htmlOutput += "<div class='testSquare " + sqClass + "' title='" + x +","+ y + "'> </div>";
 			}
 			htmlOutput += "<br>"
 		}
 		$("#map").empty().append(htmlOutput);
+	},
+	"startGame": function() {
+		tilesrl.gameData = {
+			"phase": 1, // starting
+			"collectedTiles": tilesrl.generateStartingTileStack(),
+			"levelTileStack": null,
+			"currentLevel": 1,
+			"levelMap": tilesrl.generateEmptyLevelMap()
+		};
+		tilesrl.startNewLevel();
+		tilesrl.initTilePlacementPhase();
+	},
+	"startNewLevel": function() {
+		// build a stack of tiles, 
+		// ... use all (if any) generated tiles from previous level, >> TODO
+		// ... fill rest of deck with random choices from legacy stack. >> TODO
+		let levelTileStack = [];
+		while(levelTileStack.length < 20) {
+			levelTileStack.push(tilesrl.getRandomFromArray(tilesrl.gameData.collectedTiles));
+		}
+		// add an entrance to 0th position of stack >> TODO
+		// add an exit tile to 20th position of stack >> TODO
+
+		// commit this stack to the game data
+		tilesrl.gameData.levelTileStack = levelTileStack;
+
+	},
+	"initTilePlacementPhase": function() {
+		tilesrl.gameData.phase = 2; // tile placement
+		
+		// TEMP auto placement
+			let sx = 1,
+				sy = 1; // TEMP! Need to scrape this after starting tile is placed.
+			let levelMapTemp = [];
+			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,1,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
+			for (let i = 0; i < tilesrl.gameData.levelMap.length; i++) {
+				levelMapTemp.push([tilesrl.gameData.levelMap[i][0],tilesrl.gameData.levelMap[i][1]]);
+			}
+			for (let x = 0; x < tilesrl.mapTileWidth; x++) {
+				for (let y = 0; y < tilesrl.mapTileHeight; y++) {
+					// make a copy of the game's levelMap (tile map)
+					let placementSuccess = false,
+						testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack);
+
+					// try all rotations of a random tile in the given position, stop when one works, bank position if none work
+					for (let r = 0; r < 4; r++) {
+						let testRot = testTile[tilesrl.rotLabels[r]];
+						tilesrl.commitTileToMap(levelMapTemp, testRot, x, y);
+						if (tilesrl.canPathToTile(tilesrl.flattenMap(levelMapTemp), sx, sy, (x*5), (y*5))) {
+							placementSuccess = true;
+							break;
+						}
+					}
+					if (placementSuccess) {
+						tilesrl.gameData.levelMap = levelMapTemp;
+					} else {
+						// TODO track unfilled positions?
+						console.log("failed placement at " + x + ", " + y);
+						tilesrl.commitTileToMap(levelMapTemp, fixerRot, x, y);
+						tilesrl.gameData.levelMap = levelMapTemp;
+					}
+
+			//		tilesrl.commitTileToMap(tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack)[tilesrl.getRandomFromArray(tilesrl.rotLabels)], x, y);
+				}
+			}
+			tilesrl.drawMap();
+	},
+	"canPathToTile": function(sqmap, sqx, sqy, tx, ty) {
+		// from a specific square, can we path to (follow open squares) ANY open square in tx,ty/tx+5,ty+5 range?
+		// build list of all contingous "floors" from start square
+		let pathables = (sqmap[sqx][sqy] == 0) ? tilesrl.getContiguousSquares(sqmap, sqx, sqy) : [];
+
+		// loop through target tile "floors", record a canPath true if we find a match
+		let txMax = tx + tilesrl.tileSize,
+			tyMax = ty + tilesrl.tileSize;
+		let i = 0;
+		for (let x = tx; x < txMax; x++) {
+			for (let y = ty; y < tyMax; y++) {
+				if (sqmap[x][y] == 0) { // is a floor here
+					for (let i = 0; i < pathables.length; i++) {
+						if (pathables[i].toString() == [x,y].toString()) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	},
+	"getAdjacentSquares": function(flatMap, x, y) {
+		let sq = flatMap[x][y],
+			isNorth = (y == 0),
+			isWest = (x == 0),
+			isEast = (x + 1 == flatMap.length),
+			isSouth = (y + 1 == flatMap[0].length),
+			sqAdj = [
+				(!isNorth && !isWest) ? flatMap[x - 1][y - 1] : 1, // 0 nw 
+				(!isNorth) ? flatMap[x][y - 1] : 1,                // 1 n
+				(!isNorth && !isEast) ? flatMap[x + 1][y - 1] : 1, // 2 ne
+				(!isEast) ? flatMap[x + 1][y] : 1,                 // 3 e
+				(!isSouth && !isEast) ? flatMap[x + 1][y + 1] : 1, // 4 se
+				(!isSouth) ? flatMap[x][y + 1] : 1,                // 5 s
+				(!isSouth && !isWest) ? flatMap[x - 1][y + 1] : 1, // 6 sw
+				(!isWest) ? flatMap[x - 1][y] : 1                  // 7 w
+			];
+		return sqAdj; // array of square-values (0,1) around given square x,y
+	},
+	/* getContiguousSquares
+	@flatMap : a "bitmap" of all points in map, [x][y] == int
+	@x, @y: coordinate to use as starting point (gets test value int from what's there on the map)
+	*/
+	"getContiguousSquares": function(flatMap, x, y) {
+		let squareList = [[x,y]],
+			matchVal = flatMap[x][y],
+			tested = [];
+
+		while(squareList.length) {
+			let newPos = squareList.pop(),
+				newX = newPos[0],
+				newY = newPos[1];
+
+			let	adjs = tilesrl.getAdjacentSquares(flatMap, newX, newY);
+
+			tested.push(newPos);
+
+			for (let i = 0; i < adjs.length; i++) {
+				let newPosToPush = null;
+				if (adjs[i] == matchVal) {
+					switch(i) {
+						case 1: // N
+							newPosToPush = [newX, newY - 1];
+							break;
+						case 3: // E
+							newPosToPush = [newX + 1, newY];
+							break;
+						case 5: // S
+							newPosToPush = [newX, newY + 1];
+							break;
+						case 7: // W
+							newPosToPush = [newX - 1, newY];
+							break;
+						default:
+							//noop
+					}
+				}
+				if (newPosToPush) {
+					let isSafe = true,
+						nppString = newPosToPush.toString(),
+						compareList = tested.concat(squareList); // need to test both lists, tested and to-test
+
+					for (let i = 0; i < compareList.length; i++) { // already tested or in list?
+						if (compareList[i].toString() == nppString) {
+							isSafe = false;
+							continue;
+						}
+					}
+					isSafe = isSafe && (newPosToPush[0] >= 0 && newPosToPush[1] >= 0);
+					if (isSafe) {
+						squareList.push(newPosToPush);
+					}
+				}
+			}
+		}
+
+		return tested; // aka "contiguous"
+	},
+
+	/** helpers **/
+	"getRandomFromArray": function(a) {
+		return a[Math.floor(Math.random()*a.length)];
 	},
 
 
@@ -265,9 +450,8 @@ var tilesrl = {
 		}
 		
 		$("#map").empty().append(htmlOutput);
-		console.log(output);
 	},
-	"debugGenerateRandoMap": function() {
+	"debugGenerateRandomMap": function() {
 		$("#map").empty();
 		let stack = tilesrl.generateStartingTileStack(),
 			rots = ["rot0","rot90","rot180","rot270"];
@@ -284,11 +468,6 @@ var tilesrl = {
 		tilesrl.commitTileToMap(tilesrl.getRandomFromArray(stack)[tilesrl.getRandomFromArray(rots)], Math.floor(Math.random()*5), Math.floor(Math.random()*5));
 		tilesrl.drawMap();
 	},
-
-	/** helpers **/
-	"getRandomFromArray": function(a) {
-		return a[Math.floor(Math.random()*a.length)];
-	}
 }
 
 
