@@ -35,23 +35,6 @@
 .wall.wcap {
 	border-radius: 5px 0 0 5px;
 }
-/*
-	"1": "wall",
-				"2": "wall nwcorn",
-				"3": "wall necorn",
-				"4": "wall secorn",
-				"5": "wall swcorn",
-				"6": "wall ncap",
-				"7": "wall ecap",
-				"8": "wall scap",
-				"9": "wall wcap",
-				"10": "wall walls_ns",
-				"11": "wall walls_ew",
-				"12": "wall wall_n",
-				"13": "wall wall_e",
-				"14": "wall wall_s",
-				"15": "wall wall_w"
-*/
 .testSquare.corridor {
 	background-color: #afafaf;
 }

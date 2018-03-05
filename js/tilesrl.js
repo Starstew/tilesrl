@@ -116,21 +116,8 @@ var tilesrl = {
 			diagonalsScrubbed = true;
 			for (let x = 0; x < flatMap.length; x++) {
 				for (let y = 0; y < flatMap[x].length; y++) {
-					let sq = flatMap[x][y],
-						isNorth = (y == 0),
-						isWest = (x == 0),
-						isEast = (x + 1 == flatMap.length),
-						isSouth = (y + 1 == flatMap[0].length),
-						sqAdj = [
-							(!isNorth && !isWest) ? flatMap[x - 1][y - 1] : 1, // 0 nw 
-							(!isNorth) ? flatMap[x][y - 1] : 1,                // 1 n
-							(!isNorth && !isEast) ? flatMap[x + 1][y - 1] : 1, // 2 ne
-							(!isEast) ? flatMap[x + 1][y] : 1,                 // 3 e
-							(!isSouth && !isEast) ? flatMap[x + 1][y + 1] : 1, // 4 se
-							(!isSouth) ? flatMap[x][y + 1] : 1,                // 5 s
-							(!isSouth && !isWest) ? flatMap[x - 1][y + 1] : 1, // 6 sw
-							(!isWest) ? flatMap[x - 1][y] : 1                  // 7 w
-						];
+					let sqAdj = tilesrl.getAdjacentSquares(flatMap,x,y),
+						sq = flatMap[x][y];
 					if (sq == 0) {
 						if ( (sqAdj[0] < 1 && (sqAdj[1] + sqAdj[7] == 2))
 							|| (sqAdj[2] < 1 && (sqAdj[1] + sqAdj[3] == 2))
@@ -149,22 +136,8 @@ var tilesrl = {
 			bakedMap.push([]);
 			for (let y = 0; y < flatMap[x].length; y++) {
 				let sq = flatMap[x][y],
-					isNorth = (y == 0),
-					isWest = (x == 0),
-					isEast = (x + 1 == flatMap.length),
-					isSouth = (y + 1 == flatMap[0].length),
-					sqAdj = [
-						(!isNorth && !isWest) ? flatMap[x - 1][y - 1] : 1, // 0 nw 
-						(!isNorth) ? flatMap[x][y - 1] : 1,                // 1 n
-						(!isNorth && !isEast) ? flatMap[x + 1][y - 1] : 1, // 2 ne
-						(!isEast) ? flatMap[x + 1][y] : 1,                 // 3 e
-						(!isSouth && !isEast) ? flatMap[x + 1][y + 1] : 1, // 4 se
-						(!isSouth) ? flatMap[x][y + 1] : 1,                // 5 s
-						(!isSouth && !isWest) ? flatMap[x - 1][y + 1] : 1, // 6 sw
-						(!isWest) ? flatMap[x - 1][y] : 1                  // 7 w
-					];
-
-				let bakeNumber = sq;
+					sqAdj = tilesrl.getAdjacentSquares(flatMap,x,y),
+					bakeNumber = sq;
 
 				// floor stuff
 				let isCorridor = (sq == 0)
@@ -277,7 +250,6 @@ var tilesrl = {
 
 		// commit this stack to the game data
 		tilesrl.gameData.levelTileStack = levelTileStack;
-
 	},
 	"initTilePlacementPhase": function() {
 		tilesrl.gameData.phase = 2; // tile placement
@@ -423,7 +395,6 @@ var tilesrl = {
 	"getRandomFromArray": function(a) {
 		return a[Math.floor(Math.random()*a.length)];
 	},
-
 
 	/** debug stuff **/
 	"debugDisplayTileRotations": function(t){
