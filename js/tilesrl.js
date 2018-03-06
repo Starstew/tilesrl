@@ -130,7 +130,7 @@ var tilesrl = {
 				}
 			}
 		}
-		
+
 		// traverse squares
 		for (let x = 0; x < flatMap.length; x++) {
 			bakedMap.push([]);
@@ -143,7 +143,7 @@ var tilesrl = {
 				let isCorridor = (sq == 0)
 					&& ( Math.abs(sqAdj[0]) + Math.abs(sqAdj[1]) + Math.abs(sqAdj[7]) ) > 0
 					&& ( Math.abs(sqAdj[1]) + Math.abs(sqAdj[2]) + Math.abs(sqAdj[3]) ) > 0
-					&& ( Math.abs(sqAdj[3]) + Math.abs(sqAdj[4]) + Math.abs(sqAdj[5]) ) > 0 
+					&& ( Math.abs(sqAdj[3]) + Math.abs(sqAdj[4]) + Math.abs(sqAdj[5]) ) > 0
 					&& ( Math.abs(sqAdj[5]) + Math.abs(sqAdj[6]) + Math.abs(sqAdj[7]) ) > 0;
 				if (isCorridor) {
 					bakeNumber = -1;
@@ -253,30 +253,28 @@ var tilesrl = {
 	},
 	"initTilePlacementPhase": function() {
 		tilesrl.gameData.phase = 2; // tile placement
-		
+
 		// TEMP auto placement
+
 			let sx = 1,
 				sy = 1; // TEMP! Need to scrape this after starting tile is placed.
-			let levelMapTemp = [];
+			let levelMapTemp = tilesrl.generateEmptyLevelMap();
 			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,1,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
-			for (let i = 0; i < tilesrl.gameData.levelMap.length; i++) {
-				levelMapTemp.push([tilesrl.gameData.levelMap[i][0],tilesrl.gameData.levelMap[i][1]]);
-			}
+			tilesrl.commitTileToMap(levelMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
 			for (let x = 0; x < tilesrl.mapTileWidth; x++) {
 				for (let y = 0; y < tilesrl.mapTileHeight; y++) {
+					if (x == 0 && y == 0) {
+						continue;
+					}
 					// make a copy of the game's levelMap (tile map)
 					let placementSuccess = false,
 						testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack);
-
-					// try all rotations of a random tile in the given position, stop when one works, bank position if none work
-					for (let r = 0; r < 4; r++) {
-						let testRot = testTile[tilesrl.rotLabels[r]];
-						tilesrl.commitTileToMap(levelMapTemp, testRot, x, y);
-						if (tilesrl.canPathToTile(tilesrl.flattenMap(levelMapTemp), sx, sy, (x*5), (y*5))) {
-							placementSuccess = true;
-							break;
-						}
-					}
+					let validTilePlacements = tilesrl.getAllValidTilePlacements([0,0],testTile,levelMapTemp);
+					let chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
+					console.log(["?",validTilePlacements,chosenPlacement]);
+					let chosenRot = testTile[chosenPlacement[2]];
+					tilesrl.commitTileToMap(levelMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
+					placementSuccess = validTilePlacements.length > 0;
 					if (placementSuccess) {
 						tilesrl.gameData.levelMap = levelMapTemp;
 					} else {
@@ -285,11 +283,58 @@ var tilesrl = {
 						tilesrl.commitTileToMap(levelMapTemp, fixerRot, x, y);
 						tilesrl.gameData.levelMap = levelMapTemp;
 					}
-
-			//		tilesrl.commitTileToMap(tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack)[tilesrl.getRandomFromArray(tilesrl.rotLabels)], x, y);
 				}
 			}
+
 			tilesrl.drawMap();
+	},
+	/*
+		@entrance: [x,y]
+		@newTile: [[rot0],[rot90],etc]
+		@tileMap: 5*5 reference of map so far
+	*/
+	"getAllValidTilePlacements" : function(entrance, newTile, tileMap) {
+		console.log([entrance,newTile,tileMap]);
+		// get list of open tile spaces that are adjacent to tiles already placed
+		let openTilesAdjacent = [];
+		for (let x = 0; x < tilesrl.mapTileWidth -1; x++) {
+			for (let y = 0; y < tilesrl.mapTileHeight - 1; y++) {
+				if (tileMap[x][y] === "") { // open if undefined
+					let left = (x>0 && tileMap[x-1][y]),
+						right = (x<tilesrl.mapTileWidth && tileMap[x+1][y]),
+						top = (y>0 && tileMap[x][y-1]),
+						bottom = (y<tilesrl.mapTileHeight && tileMap[x][y+1]);
+					if(left || right || top || bottom) {
+						openTilesAdjacent.push([x,y]); // seems to be adjacent and open
+					}
+				}
+			}
+		}
+		console.log("openTilesAdjacent:" + openTilesAdjacent.length);
+
+		// iterate that list, adding specific tile rotations to an array when they are valid there ([tx,ty,rotIdx])
+		let validPlacements = [];
+		let eX = entrance[0],
+			eY = entrance[1];
+		for (let t = 0; t < openTilesAdjacent.length; t++) {
+			let tileMapCopy = [];
+			for(let x=0;x<5;x++) {
+				tileMapCopy.push(tileMap[x]);
+			}
+			let x = openTilesAdjacent[t][0],
+				y = openTilesAdjacent[t][1];
+			for (let r = 0; r < 4; r++) {
+				let testRot = newTile[tilesrl.rotLabels[r]];
+				tilesrl.commitTileToMap(tileMapCopy, testRot, x, y);
+				let flatMap = tilesrl.flattenMap(tileMapCopy);
+				if (tilesrl.canPathToTile(flatMap, eX, eY, (x*5), (y*5))) {
+					validPlacements.push([x, y, r]);
+					console.log("vp!");
+				}
+			}
+		}
+		console.log("validPlacements:" + validPlacements.length);
+		return validPlacements;
 	},
 	"canPathToTile": function(sqmap, sqx, sqy, tx, ty) {
 		// from a specific square, can we path to (follow open squares) ANY open square in tx,ty/tx+5,ty+5 range?
