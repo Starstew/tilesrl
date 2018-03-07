@@ -5,15 +5,13 @@ var tilesrl = {
 	"gameData": {},
 	"rotLabels": ["rot0","rot90","rot180","rot270"],
 	"defaultTiles": [
-		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0],   // "7"
-		// [0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
-		// [0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
-		// [0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
-		[1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1],   // "7d"
-		[1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1],   // "rl"
-		[1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1],
-		[0,1,1,1,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,1,1,1,0],
-		[1,1,1,1,1,1,0,0,0,1,1,0,0,0,1,0,0,0,0,1,1,1,1,0,1]
+		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
+		[0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
+		[0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
+		[0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
+		[1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
+		[1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1], // "rl"
+		[1,1,1,0,0,1,0,0,0,0,0,1,1,1,1,0,1,1,0,1,1,1,1,0,1] //tester
 	],
 
 	/** functions **/
@@ -76,7 +74,7 @@ var tilesrl = {
 	"commitTileToMap": function(levelMap, tileRot, x, y) {
 		levelMap[x][y] = tileRot;
 	},
-	"generateEmptyLevelMap": function() {
+	"generateEmptyTileMap": function() {
 		let levelMap = [];
 		for (let x = 0; x < tilesrl.mapTileWidth; x++) {
 			let xcol = []
@@ -232,7 +230,7 @@ var tilesrl = {
 			"collectedTiles": tilesrl.generateStartingTileStack(),
 			"levelTileStack": null,
 			"currentLevel": 1,
-			"levelMap": tilesrl.generateEmptyLevelMap()
+			"levelMap": tilesrl.generateEmptyTileMap()
 		};
 		tilesrl.startNewLevel();
 		tilesrl.initTilePlacementPhase();
@@ -256,33 +254,27 @@ var tilesrl = {
 
 		// TEMP auto placement
 
-			let sx = 1,
-				sy = 1; // TEMP! Need to scrape this after starting tile is placed.
-			let levelMapTemp = tilesrl.generateEmptyLevelMap();
+			let tileMapTemp = tilesrl.generateEmptyTileMap();
 			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,1,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
-			tilesrl.commitTileToMap(levelMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
-			for (let x = 0; x < tilesrl.mapTileWidth; x++) {
-				for (let y = 0; y < tilesrl.mapTileHeight; y++) {
-					if (x == 0 && y == 0) {
-						continue;
-					}
-					// make a copy of the game's levelMap (tile map)
-					let placementSuccess = false,
-						testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack);
-					let validTilePlacements = tilesrl.getAllValidTilePlacements([0,0],testTile,levelMapTemp);
-					let chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
-					console.log(["?",validTilePlacements,chosenPlacement]);
-					let chosenRot = testTile[chosenPlacement[2]];
-					tilesrl.commitTileToMap(levelMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
-					placementSuccess = validTilePlacements.length > 0;
-					if (placementSuccess) {
-						tilesrl.gameData.levelMap = levelMapTemp;
-					} else {
-						// TODO track unfilled positions?
-						console.log("failed placement at " + x + ", " + y);
-						tilesrl.commitTileToMap(levelMapTemp, fixerRot, x, y);
-						tilesrl.gameData.levelMap = levelMapTemp;
-					}
+			tilesrl.commitTileToMap(tileMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
+
+			// go through deck and place until we fill the map
+			let slotsRemaining = 24;
+			while (slotsRemaining > 0) {
+				let placementSuccess = false,
+					testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack),
+					validTilePlacements = tilesrl.getAllValidTilePlacements([0, 0], testTile, tileMapTemp),
+					chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
+				if (validTilePlacements.length == 0) {
+					console.log(["broke at " + slotsRemaining, testTile]);
+					break;
+				}
+				let chosenRot = testTile[tilesrl.rotLabels[chosenPlacement[2]]];
+				tilesrl.commitTileToMap(tileMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
+				placementSuccess = validTilePlacements.length > 0;
+				if (placementSuccess) {
+					tilesrl.gameData.levelMap = tilesrl.getCopyTileMap(tileMapTemp);
+					slotsRemaining--;
 				}
 			}
 
@@ -294,62 +286,62 @@ var tilesrl = {
 		@tileMap: 5*5 reference of map so far
 	*/
 	"getAllValidTilePlacements" : function(entrance, newTile, tileMap) {
-		console.log([entrance,newTile,tileMap]);
 		// get list of open tile spaces that are adjacent to tiles already placed
-		let openTilesAdjacent = [];
-		for (let x = 0; x < tilesrl.mapTileWidth -1; x++) {
-			for (let y = 0; y < tilesrl.mapTileHeight - 1; y++) {
-				if (tileMap[x][y] === "") { // open if undefined
-					let left = (x>0 && tileMap[x-1][y]),
-						right = (x<tilesrl.mapTileWidth && tileMap[x+1][y]),
-						top = (y>0 && tileMap[x][y-1]),
-						bottom = (y<tilesrl.mapTileHeight && tileMap[x][y+1]);
-					if(left || right || top || bottom) {
-						openTilesAdjacent.push([x,y]); // seems to be adjacent and open
+		let openTilesAdjacent = [],
+			tmxMax = tilesrl.mapTileWidth,
+			tmyMax = tilesrl.mapTileHeight,
+			xCoordMax = tilesrl.mapTileWidth - 1,
+			yCoordMax = tilesrl.mapTileHeight - 1;
+
+		for (let x = 0; x < tmxMax; x++) {
+			for (let y = 0; y < tmyMax; y++) {
+				if (tileMap[x][y] == "") { // open if undefined
+					let left = (x > 0 && tileMap[x - 1][y] != ""),
+						right = (x < xCoordMax && tileMap[x + 1][y] != ""),
+						top = (y > 0 && tileMap[x][y - 1] != ""),
+						bottom = (y < yCoordMax && tileMap[x][y + 1] != "");
+					if (left || right || top || bottom) {
+						openTilesAdjacent.push([x, y]); // seems to be adjacent and open
 					}
 				}
 			}
 		}
-		console.log("openTilesAdjacent:" + openTilesAdjacent.length);
 
 		// iterate that list, adding specific tile rotations to an array when they are valid there ([tx,ty,rotIdx])
 		let validPlacements = [];
 		let eX = entrance[0],
 			eY = entrance[1];
 		for (let t = 0; t < openTilesAdjacent.length; t++) {
-			let tileMapCopy = [];
-			for(let x=0;x<5;x++) {
-				tileMapCopy.push(tileMap[x]);
-			}
+			let tileMapCopy = tilesrl.getCopyTileMap(tileMap);
 			let x = openTilesAdjacent[t][0],
 				y = openTilesAdjacent[t][1];
 			for (let r = 0; r < 4; r++) {
 				let testRot = newTile[tilesrl.rotLabels[r]];
 				tilesrl.commitTileToMap(tileMapCopy, testRot, x, y);
 				let flatMap = tilesrl.flattenMap(tileMapCopy);
-				if (tilesrl.canPathToTile(flatMap, eX, eY, (x*5), (y*5))) {
+				if (tilesrl.canPathToTile(flatMap, eX, eY, x, y)) {
 					validPlacements.push([x, y, r]);
-					console.log("vp!");
 				}
 			}
 		}
-		console.log("validPlacements:" + validPlacements.length);
+		//console.log([openTilesAdjacent,validPlacements]);
 		return validPlacements;
 	},
 	"canPathToTile": function(sqmap, sqx, sqy, tx, ty) {
 		// from a specific square, can we path to (follow open squares) ANY open square in tx,ty/tx+5,ty+5 range?
 		// build list of all contingous "floors" from start square
 		let pathables = (sqmap[sqx][sqy] == 0) ? tilesrl.getContiguousSquares(sqmap, sqx, sqy) : [];
-
+		console.log(["pathables",pathables]);
 		// loop through target tile "floors", record a canPath true if we find a match
-		let txMax = tx + tilesrl.tileSize,
-			tyMax = ty + tilesrl.tileSize;
+		let txMax = (tx*5) + tilesrl.tileSize,
+			tyMax = (ty*5) + tilesrl.tileSize;
 		let i = 0;
 		for (let x = tx; x < txMax; x++) {
 			for (let y = ty; y < tyMax; y++) {
 				if (sqmap[x][y] == 0) { // is a floor here
 					for (let i = 0; i < pathables.length; i++) {
-						if (pathables[i].toString() == [x,y].toString()) {
+						if ((pathables[i][0] == x) 
+							&& (pathables[i][1] == y)) {
 							return true;
 						}
 					}
@@ -381,7 +373,8 @@ var tilesrl = {
 	@x, @y: coordinate to use as starting point (gets test value int from what's there on the map)
 	*/
 	"getContiguousSquares": function(flatMap, x, y) {
-		let squareList = [[x,y]],
+		let squareList = [[x,y,tilesrl.getAdjacentSquares(flatMap,x,y)]],
+			squareListSurveyed = {},
 			matchVal = flatMap[x][y],
 			tested = [];
 
@@ -390,7 +383,14 @@ var tilesrl = {
 				newX = newPos[0],
 				newY = newPos[1];
 
-			let	adjs = tilesrl.getAdjacentSquares(flatMap, newX, newY);
+			let	adjs = [];
+			if (squareListSurveyed[newX] && squareListSurveyed[newX][newY]) {
+				adjs = squareListSurveyed[newX][newY];
+			} else {
+				adjs = tilesrl.getAdjacentSquares(flatMap, newX, newY);
+				squareListSurveyed[newX] = squareListSurveyed[newX] || {};
+				squareListSurveyed[newX][newY] = squareListSurveyed[newX][newY] || adjs;
+			}
 
 			tested.push(newPos);
 
@@ -415,18 +415,18 @@ var tilesrl = {
 					}
 				}
 				if (newPosToPush) {
-					let isSafe = true,
-						nppString = newPosToPush.toString(),
+					let isOkToPushToTestList = true,
 						compareList = tested.concat(squareList); // need to test both lists, tested and to-test
 
 					for (let i = 0; i < compareList.length; i++) { // already tested or in list?
-						if (compareList[i].toString() == nppString) {
-							isSafe = false;
+						if (compareList[i][0] + 0 == newPosToPush[0] + 0
+							&& compareList[i][1] + 0 == newPosToPush[1] + 0) {
+							isOkToPushToTestList = false;
 							continue;
 						}
 					}
-					isSafe = isSafe && (newPosToPush[0] >= 0 && newPosToPush[1] >= 0);
-					if (isSafe) {
+					isOkToPushToTestList = isOkToPushToTestList && (newPosToPush[0] >= 0 && newPosToPush[1] >= 0);
+					if (isOkToPushToTestList) {
 						squareList.push(newPosToPush);
 					}
 				}
@@ -439,6 +439,9 @@ var tilesrl = {
 	/** helpers **/
 	"getRandomFromArray": function(a) {
 		return a[Math.floor(Math.random()*a.length)];
+	},
+	"getCopyTileMap": function(tm) {
+		return JSON.parse(JSON.stringify(tm));
 	},
 
 	/** debug stuff **/
