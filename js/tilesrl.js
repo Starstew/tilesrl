@@ -1,27 +1,52 @@
 var tilesrl = {
 	"tileSize": 5,
-	"mapTileWidth": 5,
-	"mapTileHeight": 5,
+	"tileMapCols": 5,
+	"tileMapRows": 5,
 	"gameData": {},
 	"rotLabels": ["rot0","rot90","rot180","rot270"],
-	"defaultTiles": [
-		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
-		//[0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
-		//[0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
-		//[0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
-		[1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
-		[1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1], // "rl"
-		[1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1] //tester
-	],
+	"tileWallMin": 9,
+	"tileWallMax": 16,
 
 	/** functions **/
+	"createRandomTile": function(minWalls, maxWalls) {
+		let wallCount = 0,
+			sqArray = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+			numWalls = Math.floor(Math.random()*(maxWalls - minWalls)) + minWalls;
+		while (wallCount < numWalls) {
+			let rIndex = Math.floor(Math.random()*24);
+			if (sqArray[rIndex] == 0) {
+				sqArray[rIndex] = 1;
+				wallCount++;
+			}
+		}
+		// filter: all internal "0" must (be a corner) || (have contiguity to a corner or other edge "0")
+		// ... this will exclude diagonals and "ghost rooms"
+		console.log(sqArray);
+		return sqArray;
+	},
 	"generateStartingTileStack": function() {
 		let tileTargetCount = 40,
 			tileCount = 0,
 			tileStack = [];
+
+		let defaultTiles = [
+			// [0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
+			// [0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
+			// [0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
+			// [0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
+			// [1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
+			// [1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1], // "rl"
+			// [1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1] //tester
+			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
+			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
+			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
+			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax)
+
+		];
+
 		while (tileCount < tileTargetCount) {
-			for (var i = 0; i < tilesrl.defaultTiles.length; i++) {
-				tileStack.push(tilesrl.makeTile(tilesrl.defaultTiles[i]));
+			for (var i = 0; i < defaultTiles.length; i++) {
+				tileStack.push(tilesrl.makeTile(defaultTiles[i]));
 				tileCount++;
 			}
 		}
@@ -76,25 +101,22 @@ var tilesrl = {
 	},
 	"generateEmptyTileMap": function() {
 		let levelMap = [];
-		for (let x = 0; x < tilesrl.mapTileWidth; x++) {
+		for (let x = 0; x < tilesrl.tileMapCols; x++) {
 			let xcol = []
-			for (let y = 0; y < tilesrl.mapTileHeight; y++) {
+			for (let y = 0; y < tilesrl.tileMapRows; y++) {
 				xcol.push("");
 			}
 			levelMap.push(xcol);
 		}
 		return levelMap;
 	},
-	"flattenMap": function(tilemap) {
+	"getBasicFlatMap": function(tilemap) {
 		// concatenate all the levelMap tiles' arrays
 		let mapSquares = [];
-		if (!tilemap) {
-			return;
-		}
-		for (let tx = 0; tx < tilesrl.mapTileWidth; tx++) {
+		for (let tx = 0; tx < tilesrl.tileMapCols; tx++) {
 			for (let x = 0; x < tilesrl.tileSize; x++) {
 				let concatCol = [];
-				for (let ty = 0; ty < tilesrl.mapTileHeight; ty++) {
+				for (let ty = 0; ty < tilesrl.tileMapRows; ty++) {
 					if (tilemap[tx][ty]) {
 						concatCol = concatCol.concat(tilemap[tx][ty][x]);
 					} else {
@@ -107,8 +129,9 @@ var tilesrl = {
 		return mapSquares;
 	},
 	"getDiagonalScrubbedFlatMap": function(flatMap) {
-		let maxSqX = tilesrl.mapTileWidth * tilesrl.tileSize,
-			maxSqY = tilesrl.mapTileHeight * tilesrl.tileSize,
+		flatMap = tilesrl.makeCopyOfMultidimensionalArray(flatMap);
+		let maxSqX = tilesrl.tileMapCols * tilesrl.tileSize,
+			maxSqY = tilesrl.tileMapRows * tilesrl.tileSize,
 			diagonalsScrubbed = false;
 
 		while(diagonalsScrubbed == false) {
@@ -134,8 +157,8 @@ var tilesrl = {
 	},
 	"getPostProcessedFlatMap": function(flatMap) {
 		let processedFlatMap = [],
-			maxSqX = tilesrl.mapTileWidth * tilesrl.tileSize,
-			maxSqY = tilesrl.mapTileHeight * tilesrl.tileSize;
+			maxSqX = tilesrl.tileMapCols * tilesrl.tileSize,
+			maxSqY = tilesrl.tileMapRows * tilesrl.tileSize;
 
 		// traverse squares
 		for (let x = 0; x < maxSqX; x++) {
@@ -202,8 +225,8 @@ var tilesrl = {
 	},
 	"drawMap": function(flatMap) {
 		let htmlOutput = "",
-			maxSqX = tilesrl.mapTileWidth * tilesrl.tileSize,
-			maxSqY = tilesrl.mapTileHeight * tilesrl.tileSize,
+			maxSqX = tilesrl.tileMapCols * tilesrl.tileSize,
+			maxSqY = tilesrl.tileMapRows * tilesrl.tileSize,
 			squareClasses = {
 				"-1": "corridor",
 				"0": "floor",
@@ -280,17 +303,15 @@ var tilesrl = {
 					tilesrl.commitTileToMap(tileMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
 					placementSuccess = validTilePlacements.length > 0;
 					if (placementSuccess) {
-						//console.log("placed at " + chosenPlacement[0] + ", " + chosenPlacement[1]);
 						slotsRemaining--;
 					}
 
-					tilesrl.drawMap(tilesrl.flattenMap(tileMapTemp));
+					tilesrl.drawMap(tilesrl.getBasicFlatMap(tileMapTemp));
 					setTimeout(function(){
 						autoPlaceTile(slotsRemaining);
 					},500);
 				} else {
-					//console.log("done building?");
-					let fm = tilesrl.flattenMap(tileMapTemp),
+					let fm = tilesrl.getBasicFlatMap(tileMapTemp),
 						dsfm = tilesrl.getDiagonalScrubbedFlatMap(fm),
 						bfm = tilesrl.getPostProcessedFlatMap(dsfm);
 					tilesrl.drawMap(bfm);
@@ -308,10 +329,10 @@ var tilesrl = {
 	"getAllValidTilePlacements" : function(entrance, newTile, tileMap) {
 		// get list of open tile spaces that are adjacent to tiles already placed
 		let openTilesAdjacent = [],
-			tmxMax = tilesrl.mapTileWidth,
-			tmyMax = tilesrl.mapTileHeight,
-			xCoordMax = tilesrl.mapTileWidth - 1,
-			yCoordMax = tilesrl.mapTileHeight - 1;
+			tmxMax = tilesrl.tileMapCols,
+			tmyMax = tilesrl.tileMapRows,
+			xCoordMax = tilesrl.tileMapCols - 1,
+			yCoordMax = tilesrl.tileMapRows - 1;
 
 		for (let x = 0; x < tmxMax; x++) {
 			for (let y = 0; y < tmyMax; y++) {
@@ -332,13 +353,13 @@ var tilesrl = {
 		let eX = entrance[0],
 			eY = entrance[1];
 		for (let t = 0; t < openTilesAdjacent.length; t++) {
-			let tileMapCopy = tilesrl.getCopyTileMap(tileMap);
+			let tileMapCopy = tilesrl.makeCopyOfMultidimensionalArray(tileMap);
 			let x = openTilesAdjacent[t][0],
 				y = openTilesAdjacent[t][1];
 			for (let r = 0; r < 4; r++) {
 				let testRot = newTile[tilesrl.rotLabels[r]];
 				tilesrl.commitTileToMap(tileMapCopy, testRot, x, y);
-				let flatMap = tilesrl.flattenMap(tileMapCopy);
+				let flatMap = tilesrl.getBasicFlatMap(tileMapCopy);
 				if (tilesrl.canPathToTile(flatMap, eX, eY, x, y)) {
 					validPlacements.push([x, y, r]);
 				}
@@ -460,7 +481,7 @@ var tilesrl = {
 	"getRandomFromArray": function(a) {
 		return a[Math.floor(Math.random()*a.length)];
 	},
-	"getCopyTileMap": function(tm) {
+	"makeCopyOfMultidimensionalArray": function(tm) {
 		return JSON.parse(JSON.stringify(tm));
 	},
 
