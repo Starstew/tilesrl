@@ -6,12 +6,12 @@ var tilesrl = {
 	"rotLabels": ["rot0","rot90","rot180","rot270"],
 	"defaultTiles": [
 		[0,0,0,0,0,1,1,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0], // "7"
-		[0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
-		[0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
-		[0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
+		//[0,0,0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,1,1,0,0,0,0,0,0], // "d"
+		//[0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,1,0,0,0,0,0,0,0,0], // "r"
+		//[0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
 		[1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
 		[1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1], // "rl"
-		[1,1,1,0,0,1,0,0,0,0,0,1,1,1,1,0,1,1,0,1,1,1,1,0,1] //tester
+		[1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1] //tester
 	],
 
 	/** functions **/
@@ -91,12 +91,14 @@ var tilesrl = {
 		if (!tilemap) {
 			return;
 		}
-		for (let tx = 0; tx < tilemap.length; tx++) {
+		for (let tx = 0; tx < tilesrl.mapTileWidth; tx++) {
 			for (let x = 0; x < tilesrl.tileSize; x++) {
-				let concatCol = [];	
-				for (let ty = 0; ty < tilemap[tx].length; ty++) {
+				let concatCol = [];
+				for (let ty = 0; ty < tilesrl.mapTileHeight; ty++) {
 					if (tilemap[tx][ty]) {
 						concatCol = concatCol.concat(tilemap[tx][ty][x]);
+					} else {
+						concatCol = concatCol.concat(new Array(tilesrl.tileSize));
 					}
 				}
 				mapSquares.push(concatCol);
@@ -104,16 +106,15 @@ var tilesrl = {
 		}
 		return mapSquares;
 	},
-	"bakeMap": function() {
-		let flatMap = tilesrl.flattenMap(tilesrl.gameData.levelMap),
-			bakedMap = [];
+	"getDiagonalScrubbedFlatMap": function(flatMap) {
+		let maxSqX = tilesrl.mapTileWidth * tilesrl.tileSize,
+			maxSqY = tilesrl.mapTileHeight * tilesrl.tileSize,
+			diagonalsScrubbed = false;
 
-		// first pass, catch diagonals
-		let diagonalsScrubbed = false;
 		while(diagonalsScrubbed == false) {
 			diagonalsScrubbed = true;
-			for (let x = 0; x < flatMap.length; x++) {
-				for (let y = 0; y < flatMap[x].length; y++) {
+			for (let x = 0; x < maxSqX; x++) {
+				for (let y = 0; y < maxSqY; y++) {
 					let sqAdj = tilesrl.getAdjacentSquares(flatMap,x,y),
 						sq = flatMap[x][y];
 					if (sq == 0) {
@@ -129,10 +130,17 @@ var tilesrl = {
 			}
 		}
 
+		return flatMap;
+	},
+	"getPostProcessedFlatMap": function(flatMap) {
+		let processedFlatMap = [],
+			maxSqX = tilesrl.mapTileWidth * tilesrl.tileSize,
+			maxSqY = tilesrl.mapTileHeight * tilesrl.tileSize;
+
 		// traverse squares
-		for (let x = 0; x < flatMap.length; x++) {
-			bakedMap.push([]);
-			for (let y = 0; y < flatMap[x].length; y++) {
+		for (let x = 0; x < maxSqX; x++) {
+			processedFlatMap.push([]);
+			for (let y = 0; y < maxSqY; y++) {
 				let sq = flatMap[x][y],
 					sqAdj = tilesrl.getAdjacentSquares(flatMap,x,y),
 					bakeNumber = sq;
@@ -186,15 +194,16 @@ var tilesrl = {
 					}
 				}
 
-				bakedMap[x].push(bakeNumber);
+				processedFlatMap[x].push(bakeNumber);
 			}
 		}
 
-		return bakedMap;
+		return processedFlatMap;
 	},
-	"drawMap": function() {
-		let bakedMap = tilesrl.bakeMap(),
-			htmlOutput = "",
+	"drawMap": function(flatMap) {
+		let htmlOutput = "",
+			maxSqX = tilesrl.mapTileWidth * tilesrl.tileSize,
+			maxSqY = tilesrl.mapTileHeight * tilesrl.tileSize,
 			squareClasses = {
 				"-1": "corridor",
 				"0": "floor",
@@ -214,10 +223,10 @@ var tilesrl = {
 				"14": "wall wall_s",
 				"15": "wall wall_w"
 			};
-
-		for (let y = 0; y < bakedMap[0].length; y++) {
-			for (let x = 0; x < bakedMap.length; x++) {
-				let sqClass = squareClasses[bakedMap[x][y]];
+		for (let y = 0; y < maxSqY; y++) {
+			for (let x = 0; x < maxSqX; x++) {
+				let sqClass = squareClasses[flatMap[x][y]];
+				sqClass += " x" + x + " y" + y;
 				htmlOutput += "<div class='testSquare " + sqClass + "' title='" + x +","+ y + "'> </div>";
 			}
 			htmlOutput += "<br>"
@@ -253,32 +262,43 @@ var tilesrl = {
 		tilesrl.gameData.phase = 2; // tile placement
 
 		// TEMP auto placement
-
 			let tileMapTemp = tilesrl.generateEmptyTileMap();
 			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,1,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
 			tilesrl.commitTileToMap(tileMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
 
-			// go through deck and place until we fill the map
-			let slotsRemaining = 24;
-			while (slotsRemaining > 0) {
-				let placementSuccess = false,
+			let autoPlaceTile = function(sr) {
+				if (sr > 0) {
+					let placementSuccess = false,
 					testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack),
 					validTilePlacements = tilesrl.getAllValidTilePlacements([0, 0], testTile, tileMapTemp),
 					chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
-				if (validTilePlacements.length == 0) {
-					console.log(["broke at " + slotsRemaining, testTile]);
-					break;
-				}
-				let chosenRot = testTile[tilesrl.rotLabels[chosenPlacement[2]]];
-				tilesrl.commitTileToMap(tileMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
-				placementSuccess = validTilePlacements.length > 0;
-				if (placementSuccess) {
-					tilesrl.gameData.levelMap = tilesrl.getCopyTileMap(tileMapTemp);
-					slotsRemaining--;
-				}
-			}
+					if (validTilePlacements.length == 0) {
+						console.log(["broke at " + slotsRemaining, testTile]);
+						return;
+					}
+					let chosenRot = testTile[tilesrl.rotLabels[chosenPlacement[2]]];
+					tilesrl.commitTileToMap(tileMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
+					placementSuccess = validTilePlacements.length > 0;
+					if (placementSuccess) {
+						//console.log("placed at " + chosenPlacement[0] + ", " + chosenPlacement[1]);
+						slotsRemaining--;
+					}
 
-			tilesrl.drawMap();
+					tilesrl.drawMap(tilesrl.flattenMap(tileMapTemp));
+					setTimeout(function(){
+						autoPlaceTile(slotsRemaining);
+					},500);
+				} else {
+					//console.log("done building?");
+					let fm = tilesrl.flattenMap(tileMapTemp),
+						dsfm = tilesrl.getDiagonalScrubbedFlatMap(fm),
+						bfm = tilesrl.getPostProcessedFlatMap(dsfm);
+					tilesrl.drawMap(bfm);
+				}
+			};
+			// go through deck and place until we fill the map
+			let slotsRemaining = 24;
+			autoPlaceTile(slotsRemaining);
 	},
 	/*
 		@entrance: [x,y]
@@ -331,7 +351,7 @@ var tilesrl = {
 		// from a specific square, can we path to (follow open squares) ANY open square in tx,ty/tx+5,ty+5 range?
 		// build list of all contingous "floors" from start square
 		let pathables = (sqmap[sqx][sqy] == 0) ? tilesrl.getContiguousSquares(sqmap, sqx, sqy) : [];
-		console.log(["pathables",pathables]);
+		//console.log(["pathables",pathables]);
 		// loop through target tile "floors", record a canPath true if we find a match
 		let txMax = (tx*5) + tilesrl.tileSize,
 			tyMax = (ty*5) + tilesrl.tileSize;
@@ -445,48 +465,6 @@ var tilesrl = {
 	},
 
 	/** debug stuff **/
-	"debugDisplayTileRotations": function(t){
-		let objs = [t.rot0, t.rot90, t.rot180, t.rot270],
-			output = "--------\n",
-			htmlOutput = "";
-
-		for (let i = 0; i < objs.length; i++) {
-			output += "\n\n";
-			htmlOutput += "<p>";
-
-			let rot = objs[i];
-			for (let y = 0; y < 5; y++) {
-				output += "\n";
-				htmlOutput += "<br>"
-				for (let x = 0; x < 5; x++) {
-					let sq = (rot[x][y] > 0) ? "=" : "-";
-					output += sq;
-					htmlOutput += "<div class='testSquare ";
-					htmlOutput += (rot[x][y] > 0) ? "wall" : "floor";
-					htmlOutput += "'> </div>";
-				}
-			}
-		}
-		
-		$("#map").empty().append(htmlOutput);
-	},
-	"debugGenerateRandomMap": function() {
-		$("#map").empty();
-		let stack = tilesrl.generateStartingTileStack(),
-			rots = ["rot0","rot90","rot180","rot270"];
-		for (let x = 0; x < tilesrl.mapTileWidth; x++) {
-			for (let y = 0; y < tilesrl.mapTileHeight; y++) {
-				tilesrl.commitTileToMap(tilesrl.getRandomFromArray(stack)[tilesrl.getRandomFromArray(rots)], x, y);
-			}
-		}
-		tilesrl.drawMap();
-	},
-	"debugAddRandomTile": function() {
-		let stack = tilesrl.generateStartingTileStack(),
-			rots = ["rot0","rot90","rot180","rot270"];
-		tilesrl.commitTileToMap(tilesrl.getRandomFromArray(stack)[tilesrl.getRandomFromArray(rots)], Math.floor(Math.random()*5), Math.floor(Math.random()*5));
-		tilesrl.drawMap();
-	},
 }
 
 
