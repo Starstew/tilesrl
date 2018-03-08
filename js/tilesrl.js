@@ -21,7 +21,7 @@ var tilesrl = {
 		}
 		// filter: all internal "0" must (be a corner) || (have contiguity to a corner or other edge "0")
 		// ... this will exclude diagonals and "ghost rooms"
-		console.log(sqArray);
+		//console.log(sqArray);
 		return sqArray;
 	},
 	"generateStartingTileStack": function() {
@@ -36,11 +36,18 @@ var tilesrl = {
 			// [0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
 			// [1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
 			// [1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1], // "rl"
+			 [1,1,0,1,1, 0,0,0,0,1, 1,0,0,0,0, 0,0,0,0,1, 1,1,0,1,1],
+			 [1,1,1,0,0, 1,0,0,0,0, 1,0,0,0,1, 0,0,0,0,1, 0,1,1,1,1],
+			 [1,0,1,0,1, 0,0,1,0,0, 1,0,1,1,1, 0,0,1,0,0, 1,0,1,0,1],
+			 [0,0,0,1,1, 0,0,0,1,1, 1,0,0,0,1, 0,0,1,1,1, 0,0,1,1,1],
+			 [1,1,1,1,1, 0,0,0,0,0, 1,1,0,1,1, 1,1,0,1,1, 1,1,0,1,1],
+			 [1,0,1,0,1, 1,0,1,0,1, 0,0,1,0,0, 1,1,0,0,0, 1,1,0,1,1]
+			// [0,0,0,0,0,1,1,1,0,1,0,0,0,0,0,1,1,0,1,1,0,0,0,0,0]
 			// [1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1] //tester
-			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
-			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
-			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
-			tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax)
+			//tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
+			// tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
+			// tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
+			// tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax)
 
 		];
 
@@ -141,11 +148,24 @@ var tilesrl = {
 					let sqAdj = tilesrl.getAdjacentSquares(flatMap,x,y),
 						sq = flatMap[x][y];
 					if (sq == 0) {
-						if ( (sqAdj[0] < 1 && (sqAdj[1] + sqAdj[7] == 2))
-							|| (sqAdj[2] < 1 && (sqAdj[1] + sqAdj[3] == 2))
-							|| (sqAdj[4] < 1 && (sqAdj[3] + sqAdj[5] == 2))
-							|| (sqAdj[6] < 1 && (sqAdj[5] + sqAdj[7] == 2)) ) {
-								flatMap[x][y] = 1; // a "dumb" change to wall (TODO: make it choosier? Such as not-blocking a corridor)
+						let dnw = (sqAdj[0] < 1 && (sqAdj[1] + sqAdj[7] == 2)),
+							dne = (sqAdj[2] < 1 && (sqAdj[1] + sqAdj[3] == 2)),
+							dse = (sqAdj[4] < 1 && (sqAdj[3] + sqAdj[5] == 2)),
+							dsw = (sqAdj[6] < 1 && (sqAdj[5] + sqAdj[7] == 2));
+
+						if ( dnw || dne || dse || dsw ) {
+								if (dnw) {
+									flatMap[x][y-1] = 0;
+								}
+								if (dne) {
+									flatMap[x+1][y] = 0;
+								}
+								if (dse) {
+									flatMap[x][y+1] = 0;
+								}
+								if (dsw) {
+									flatMap[x-1][y] = 0;
+								}
 								diagonalsScrubbed = false;
 						}
 					}
@@ -286,17 +306,24 @@ var tilesrl = {
 
 		// TEMP auto placement
 			let tileMapTemp = tilesrl.generateEmptyTileMap();
-			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,1,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
+			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
 			tilesrl.commitTileToMap(tileMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
 
-			let autoPlaceTile = function(sr) {
+			let autoPlaceTile = function(sr, attempts) {
+				attempts = attempts || 1;
 				if (sr > 0) {
 					let placementSuccess = false,
 					testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack),
 					validTilePlacements = tilesrl.getAllValidTilePlacements([0, 0], testTile, tileMapTemp),
 					chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
 					if (validTilePlacements.length == 0) {
-						console.log(["broke at " + slotsRemaining, testTile]);
+						console.log(["broke at " + slotsRemaining, testTile, attempts]);
+						if (attempts < 3) {
+							attempts++;
+							autoPlaceTile(sr, attempts);
+						} else {
+							console.log("FUDGE!");
+						}
 						return;
 					}
 					let chosenRot = testTile[tilesrl.rotLabels[chosenPlacement[2]]];
@@ -309,7 +336,7 @@ var tilesrl = {
 					tilesrl.drawMap(tilesrl.getBasicFlatMap(tileMapTemp));
 					setTimeout(function(){
 						autoPlaceTile(slotsRemaining);
-					},500);
+					},20);
 				} else {
 					let fm = tilesrl.getBasicFlatMap(tileMapTemp),
 						dsfm = tilesrl.getDiagonalScrubbedFlatMap(fm),
@@ -360,26 +387,35 @@ var tilesrl = {
 				let testRot = newTile[tilesrl.rotLabels[r]];
 				tilesrl.commitTileToMap(tileMapCopy, testRot, x, y);
 				let flatMap = tilesrl.getBasicFlatMap(tileMapCopy);
-				if (tilesrl.canPathToTile(flatMap, eX, eY, x, y)) {
+				let placedTilesCount = 0,
+					pathableTilesCount = 0;
+				for (let tmx = 0; tmx < tileMapCopy.length; tmx++) {
+					for (let tmy = 0; tmy < tileMapCopy[tmx].length; tmy++) {
+						if (tileMapCopy[tmx][tmy] != "") {
+							placedTilesCount++;
+							if (tilesrl.canPathToTile(flatMap, eX, eY, tmx, tmy)) {
+								pathableTilesCount++
+							}
+						}
+					}
+				}
+				if (placedTilesCount == pathableTilesCount) {
 					validPlacements.push([x, y, r]);
 				}
 			}
 		}
-		//console.log([openTilesAdjacent,validPlacements]);
 		return validPlacements;
 	},
-	"canPathToTile": function(sqmap, sqx, sqy, tx, ty) {
+	"canPathToTile": function(flatMap, sqx, sqy, tx, ty) {
 		// from a specific square, can we path to (follow open squares) ANY open square in tx,ty/tx+5,ty+5 range?
 		// build list of all contingous "floors" from start square
-		let pathables = (sqmap[sqx][sqy] == 0) ? tilesrl.getContiguousSquares(sqmap, sqx, sqy) : [];
-		//console.log(["pathables",pathables]);
+		let pathables = (flatMap[sqx][sqy] == 0) ? tilesrl.getContiguousSquares(flatMap, sqx, sqy) : [];
 		// loop through target tile "floors", record a canPath true if we find a match
 		let txMax = (tx*5) + tilesrl.tileSize,
 			tyMax = (ty*5) + tilesrl.tileSize;
-		let i = 0;
-		for (let x = tx; x < txMax; x++) {
-			for (let y = ty; y < tyMax; y++) {
-				if (sqmap[x][y] == 0) { // is a floor here
+		for (let x = (tx*5); x < txMax; x++) {
+			for (let y = (ty*5); y < tyMax; y++) {
+				if (flatMap[x][y] == 0) { // is a floor here
 					for (let i = 0; i < pathables.length; i++) {
 						if ((pathables[i][0] == x) 
 							&& (pathables[i][1] == y)) {
@@ -414,12 +450,12 @@ var tilesrl = {
 	@x, @y: coordinate to use as starting point (gets test value int from what's there on the map)
 	*/
 	"getContiguousSquares": function(flatMap, x, y) {
-		let squareList = [[x,y,tilesrl.getAdjacentSquares(flatMap,x,y)]],
+		let squareList = [[x,y]],
 			squareListSurveyed = {},
 			matchVal = flatMap[x][y],
-			tested = [];
+			contiguousSquares = [];
 
-		while(squareList.length) {
+		while(squareList.length > 0) {
 			let newPos = squareList.pop(),
 				newX = newPos[0],
 				newY = newPos[1];
@@ -433,10 +469,11 @@ var tilesrl = {
 				squareListSurveyed[newX][newY] = squareListSurveyed[newX][newY] || adjs;
 			}
 
-			tested.push(newPos);
+			contiguousSquares.push(newPos);
 
 			for (let i = 0; i < adjs.length; i++) {
 				let newPosToPush = null;
+
 				if (adjs[i] == matchVal) {
 					switch(i) {
 						case 1: // N
@@ -455,18 +492,24 @@ var tilesrl = {
 							//noop
 					}
 				}
+
+				// should it be added to the list of things to test? (or has it already been tested, or already on list?)
 				if (newPosToPush) {
 					let isOkToPushToTestList = true,
-						compareList = tested.concat(squareList); // need to test both lists, tested and to-test
+						compareList = contiguousSquares.concat(squareList), // need to test both lists, tested and to-test
+						pX = newPosToPush[0],
+						pY = newPosToPush[1];
 
-					for (let i = 0; i < compareList.length; i++) { // already tested or in list?
-						if (compareList[i][0] + 0 == newPosToPush[0] + 0
-							&& compareList[i][1] + 0 == newPosToPush[1] + 0) {
+					for (let i = 0; i < compareList.length; i++) { // already tested or in list to be tested?
+						let cX = compareList[i][0],
+							cY = compareList[i][1];
+						if (cX == pX && cY == pY) {
 							isOkToPushToTestList = false;
-							continue;
 						}
 					}
-					isOkToPushToTestList = isOkToPushToTestList && (newPosToPush[0] >= 0 && newPosToPush[1] >= 0);
+
+					//isOkToPushToTestList = isOkToPushToTestList && (newPosToPush[0] >= 0 && newPosToPush[1] >= 0); // just make sure it's on grid
+
 					if (isOkToPushToTestList) {
 						squareList.push(newPosToPush);
 					}
@@ -474,7 +517,7 @@ var tilesrl = {
 			}
 		}
 
-		return tested; // aka "contiguous"
+		return contiguousSquares;
 	},
 
 	/** helpers **/
@@ -512,3 +555,44 @@ squareClasses = {
 };
 
 **/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*******           #######  ########   #######     ##       ##       ########              *******/
+/*******           ##          ##      ##          ##       ##       ##    ##              *******/
+/*******           #######     ##      ######      ##       ##       ########              *******/
+/*******                ##     ##      ##          ##       ##       ##    ##              *******/
+/*******           #######     ##      #######     #######  #######  ##    ##              *******/
+
+
+
+
+
+

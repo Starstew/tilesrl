@@ -12,29 +12,29 @@
 	background-color: #111;
 }
 .wall.nwcorn {
-	border-radius: 5px 0 0 0;
+	border-radius: 2px 0 0 0;
 }
 .wall.necorn {
-	border-radius: 0 5px 0 0;
+	border-radius: 0 2px 0 0;
 }
 .wall.secorn {
-	border-radius: 0 0 5px 0;
+	border-radius: 0 0 2px 0;
 }
 .wall.swcorn {
-	border-radius: 0 0 0 5px;
+	border-radius: 0 0 0 2px;
 }
 .wall.ncap {
-	border-radius: 5px 5px 0 0;
+	border-radius: 2px 2px 0 0;
 }
 .wall.ecap {
-	border-radius: 0 5px 5px 0;
+	border-radius: 0 2px 2px 0;
 }
 .wall.scap {
-	border-radius: 0 0 5px 5px;
+	border-radius: 0 0 2px 2px;
 }
 .wall.wcap {
-	border-radius: 5px 0 0 5px;
+	border-radius: 2px 0 0 2px;
 }
 .testSquare.corridor {
-	background-color: #afafaf;
+	background-color: #9f9f9f;
 }
