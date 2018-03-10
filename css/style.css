@@ -6,7 +6,10 @@
 	display: inline-block;
 	width: 20px;
 	height: 20px;
-	border: inset 1px rgba(200,200,200,0.2);
+	border: dotted 1px rgba(200,200,200,0.5);
+}
+.testSquare:nth-of-type(5n+0) {
+	xborder-right-color: yellow;
 }
 .testSquare.wall {
 	background-color: #111;

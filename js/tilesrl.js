@@ -36,18 +36,22 @@ var tilesrl = {
 			// [0,0,0,0,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,0,0,0,0], // "L"
 			// [1,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1], // "7d"
 			// [1,1,1,0,0,1,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,1], // "rl"
-			 [1,1,0,1,1, 0,0,0,0,1, 1,0,0,0,0, 0,0,0,0,1, 1,1,0,1,1],
-			 [1,1,1,0,0, 1,0,0,0,0, 1,0,0,0,1, 0,0,0,0,1, 0,1,1,1,1],
-			 [1,0,1,0,1, 0,0,1,0,0, 1,0,1,1,1, 0,0,1,0,0, 1,0,1,0,1],
-			 [0,0,0,1,1, 0,0,0,1,1, 1,0,0,0,1, 0,0,1,1,1, 0,0,1,1,1],
-			 [1,1,1,1,1, 0,0,0,0,0, 1,1,0,1,1, 1,1,0,1,1, 1,1,0,1,1],
-			 [1,0,1,0,1, 1,0,1,0,1, 0,0,1,0,0, 1,1,0,0,0, 1,1,0,1,1]
+			 // [1,1,0,1,1, 0,0,0,0,1, 1,0,0,0,0, 0,0,0,0,1, 1,1,0,1,1],
+			 // [1,1,1,0,0, 1,0,0,0,0, 1,0,0,0,1, 0,0,0,0,1, 0,1,1,1,1],
+			 // [1,0,1,0,1, 0,0,1,0,0, 1,0,1,1,1, 0,0,1,0,0, 1,0,1,0,1],
+			 // [0,0,0,1,1, 0,0,0,1,1, 1,0,0,0,1, 0,0,1,1,1, 0,0,1,1,1],
+			 // [1,1,1,1,1, 0,0,0,0,0, 1,1,0,1,1, 1,1,0,1,1, 1,1,0,1,1],
+			 // [1,0,1,0,1, 1,0,1,0,1, 0,0,1,0,0, 1,1,0,0,0, 1,1,0,1,1]
 			// [0,0,0,0,0,1,1,1,0,1,0,0,0,0,0,1,1,0,1,1,0,0,0,0,0]
 			// [1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1] //tester
 			//tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
-			// tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
-			// tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
-			// tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax)
+
+			[1,1,1,1,0, 1,0,0,1,0, 0,0,0,0,0, 1,0,0,1,0, 1,1,1,1,0], // 3x2 room
+			[1,0,1,1,1, 0,0,1,0,0, 1,0,1,0,1, 0,0,1,0,0, 1,1,1,0,1], // zumlaut
+			[1,1,0,0,0, 0,1,0,1,1, 0,0,0,1,1, 0,1,0,1,1, 1,1,0,0,0], // minecraft
+			[0,1,1,1,0, 0,0,1,1,1, 1,0,0,0,0, 0,0,1,1,1, 0,1,1,1,0], // y-cheer
+			[1,1,0,1,1, 0,1,0,1,0, 0,0,0,0,0, 0,1,0,1,0, 1,1,0,1,1], // halfrooms with mid-corridor
+			[0,0,0,0,0, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1], // hall and partroom
 
 		];
 
@@ -135,12 +139,15 @@ var tilesrl = {
 		}
 		return mapSquares;
 	},
-	"getDiagonalScrubbedFlatMap": function(flatMap) {
+	"getScrubbedFlatMap": function(flatMap) {
+		/* scrub the diagonals, unwanted dead-ends, and stuff from flatMap */
+
 		flatMap = tilesrl.makeCopyOfMultidimensionalArray(flatMap);
 		let maxSqX = tilesrl.tileMapCols * tilesrl.tileSize,
 			maxSqY = tilesrl.tileMapRows * tilesrl.tileSize,
 			diagonalsScrubbed = false;
 
+		// get rid of all unwanted diagonals
 		while(diagonalsScrubbed == false) {
 			diagonalsScrubbed = true;
 			for (let x = 0; x < maxSqX; x++) {
@@ -173,9 +180,41 @@ var tilesrl = {
 			}
 		}
 
+		// get rid of edge alcoves
+		for (let x = 0; x < maxSqX; x++) {
+			for (let y = 0; y < maxSqY; y++) {
+				let sq = flatMap[x][y];
+				if (sq != 0) {
+					continue;
+				}
+
+				let sqAdj = tilesrl.getAdjacentSquares(flatMap,x,y),
+					isEdge = (x == 0 || y == 0 || x == maxSqX || y == maxSqY),
+					isToBeFilled = false;
+
+				if ((x == 0 && sqAdj[1] == 1 && sqAdj[5] == 1)
+					|| (y == 0 && sqAdj[7] == 1 && sqAdj[3] == 1)
+					|| (x == maxSqX - 1 && sqAdj[1] == 1 && sqAdj[5] == 1)
+					|| (y == maxSqY - 1 && sqAdj[7] == 1 && sqAdj[3] == 1)) {
+					isToBeFilled = true;
+				}
+
+				if (isToBeFilled) { console.log("itbf!"); }
+
+				flatMap[x][y] = (isToBeFilled) ? 1 : flatMap[x][y];
+			}
+		}
+
 		return flatMap;
 	},
 	"getPostProcessedFlatMap": function(flatMap) {
+		/* 
+			Update values for coordinates to reflect context.
+			1+ : walltypes
+			 0 : room (by default)
+			-1 : corridor
+			-2 : alcove
+		*/
 		let processedFlatMap = [],
 			maxSqX = tilesrl.tileMapCols * tilesrl.tileSize,
 			maxSqY = tilesrl.tileMapRows * tilesrl.tileSize;
@@ -306,18 +345,19 @@ var tilesrl = {
 
 		// TEMP auto placement
 			let tileMapTemp = tilesrl.generateEmptyTileMap();
-			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]];
+			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]],
+				fixerRotTile = tilesrl.makeTile(fixerRot);
 			tilesrl.commitTileToMap(tileMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
 
 			let autoPlaceTile = function(sr, attempts) {
 				attempts = attempts || 1;
 				if (sr > 0) {
 					let placementSuccess = false,
-					testTile = tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack),
+					testTile = (attempts < 2) ? tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack) : fixerRotTile,
 					validTilePlacements = tilesrl.getAllValidTilePlacements([0, 0], testTile, tileMapTemp),
 					chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
 					if (validTilePlacements.length == 0) {
-						console.log(["broke at " + slotsRemaining, testTile, attempts]);
+						console.log(["broke at " + sr, testTile, attempts]);
 						if (attempts < 3) {
 							attempts++;
 							autoPlaceTile(sr, attempts);
@@ -330,23 +370,22 @@ var tilesrl = {
 					tilesrl.commitTileToMap(tileMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
 					placementSuccess = validTilePlacements.length > 0;
 					if (placementSuccess) {
-						slotsRemaining--;
+						sr--;
 					}
 
 					tilesrl.drawMap(tilesrl.getBasicFlatMap(tileMapTemp));
 					setTimeout(function(){
-						autoPlaceTile(slotsRemaining);
+						autoPlaceTile(sr);
 					},20);
 				} else {
 					let fm = tilesrl.getBasicFlatMap(tileMapTemp),
-						dsfm = tilesrl.getDiagonalScrubbedFlatMap(fm),
+						dsfm = tilesrl.getScrubbedFlatMap(fm),
 						bfm = tilesrl.getPostProcessedFlatMap(dsfm);
 					tilesrl.drawMap(bfm);
 				}
 			};
 			// go through deck and place until we fill the map
-			let slotsRemaining = 24;
-			autoPlaceTile(slotsRemaining);
+			autoPlaceTile(24);
 	},
 	/*
 		@entrance: [x,y]
@@ -518,6 +557,11 @@ var tilesrl = {
 		}
 
 		return contiguousSquares;
+	},
+
+	/** moving on map **/
+	"isPathToSquare": function(liveMap, sX, sY, tX, tY) {
+		// "liveMap" is an in-play map of cells ({cellType,gobjsInCell,cellX,cellY})
 	},
 
 	/** helpers **/
