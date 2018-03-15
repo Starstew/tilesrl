@@ -7,6 +7,9 @@ var tilesrl = {
 	"tileWallMin": 9,
 	"tileWallMax": 16,
 
+	"PHASE_START_GAME": 1,
+	"PHASE_TILE_PLACEMENT": 2,
+
 	/** functions **/
 	"createRandomTile": function(minWalls, maxWalls) {
 		let wallCount = 0,
@@ -21,7 +24,6 @@ var tilesrl = {
 		}
 		// filter: all internal "0" must (be a corner) || (have contiguity to a corner or other edge "0")
 		// ... this will exclude diagonals and "ghost rooms"
-		//console.log(sqArray);
 		return sqArray;
 	},
 	"generateStartingTileStack": function() {
@@ -46,12 +48,12 @@ var tilesrl = {
 			// [1,0,1,1,1,0,0,1,1,1,1,0,1,1,1,1,0,0,0,0,1,0,1,1,1] //tester
 			//tilesrl.createRandomTile(tilesrl.tileWallMin, tilesrl.tileWallMax),
 
-			[1,1,1,1,0, 1,0,0,1,0, 0,0,0,0,0, 1,0,0,1,0, 1,1,1,1,0], // 3x2 room
-			[1,0,1,1,1, 0,0,1,0,0, 1,0,1,0,1, 0,0,1,0,0, 1,1,1,0,1], // zumlaut
+			// [1,1,1,1,0, 1,0,0,1,0, 0,0,0,0,0, 1,0,0,1,0, 1,1,1,1,0], // 3x2 room
+			// [1,0,1,1,1, 0,0,1,0,0, 1,0,1,0,1, 0,0,1,0,0, 1,1,1,0,1], // zumlaut
 			[1,1,0,0,0, 0,1,0,1,1, 0,0,0,1,1, 0,1,0,1,1, 1,1,0,0,0], // minecraft
 			[0,1,1,1,0, 0,0,1,1,1, 1,0,0,0,0, 0,0,1,1,1, 0,1,1,1,0], // y-cheer
-			[1,1,0,1,1, 0,1,0,1,0, 0,0,0,0,0, 0,1,0,1,0, 1,1,0,1,1], // halfrooms with mid-corridor
-			[0,0,0,0,0, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1], // hall and partroom
+			// [1,1,0,1,1, 0,1,0,1,0, 0,0,0,0,0, 0,1,0,1,0, 1,1,0,1,1], // halfrooms with mid-corridor
+			// [0,0,0,0,0, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1, 0,0,1,0,1], // hall and partroom
 
 		];
 
@@ -107,19 +109,19 @@ var tilesrl = {
 		}
 		return newMap;
 	},
-	"commitTileToMap": function(levelMap, tileRot, x, y) {
-		levelMap[x][y] = tileRot;
+	"commitTileToMap": function(tileMap, tileRot, x, y) {
+		tileMap[x][y] = tileRot;
 	},
 	"generateEmptyTileMap": function() {
-		let levelMap = [];
+		let tileMap = [];
 		for (let x = 0; x < tilesrl.tileMapCols; x++) {
 			let xcol = []
 			for (let y = 0; y < tilesrl.tileMapRows; y++) {
 				xcol.push("");
 			}
-			levelMap.push(xcol);
+			tileMap.push(xcol);
 		}
-		return levelMap;
+		return tileMap;
 	},
 	"getBasicFlatMap": function(tilemap) {
 		// concatenate all the levelMap tiles' arrays
@@ -198,8 +200,6 @@ var tilesrl = {
 					|| (y == maxSqY - 1 && sqAdj[7] == 1 && sqAdj[3] == 1)) {
 					isToBeFilled = true;
 				}
-
-				if (isToBeFilled) { console.log("itbf!"); }
 
 				flatMap[x][y] = (isToBeFilled) ? 1 : flatMap[x][y];
 			}
@@ -317,21 +317,29 @@ var tilesrl = {
 	},
 	"startGame": function() {
 		tilesrl.gameData = {
-			"phase": 1, // starting
+			"phase": tilesrl.PHASE_START_GAME, // starting
 			"collectedTiles": tilesrl.generateStartingTileStack(),
 			"levelTileStack": null,
-			"currentLevel": 1,
-			"levelMap": tilesrl.generateEmptyTileMap()
+			"currentLevel": 0,
+			"levelData": {}
 		};
-		tilesrl.startNewLevel();
-		tilesrl.initTilePlacementPhase();
+		tilesrl.startNewLevel(1);
+		//tilesrl.initTilePlacementPhase();
 	},
-	"startNewLevel": function() {
+	"startNewLevel": function(lvl) {
+		// update gameData
+		tilesrl.gameData.currentLevel = lvl;
+		tilesrl.gameData.levelData[lvl] = {
+			"tileMap": [],
+			"flatMap": []
+		};
+
 		// build a stack of tiles, 
 		// ... use all (if any) generated tiles from previous level, >> TODO
 		// ... fill rest of deck with random choices from legacy stack. >> TODO
-		let levelTileStack = [];
-		while(levelTileStack.length < 20) {
+		let levelTileStack = [],
+			numDifferentTiles = 3 * lvl;
+		while(levelTileStack.length < numDifferentTiles) {
 			levelTileStack.push(tilesrl.getRandomFromArray(tilesrl.gameData.collectedTiles));
 		}
 		// add an entrance to 0th position of stack >> TODO
@@ -339,33 +347,75 @@ var tilesrl = {
 
 		// commit this stack to the game data
 		tilesrl.gameData.levelTileStack = levelTileStack;
+
+		// TEMP
+		tilesrl.autoGenerateMapFromTiles(function(flatMap){
+			console.log(["DONE!",flatMap]);
+			let dsfm = tilesrl.getScrubbedFlatMap(flatMap),
+				bfm = tilesrl.getPostProcessedFlatMap(dsfm);
+			tilesrl.drawMap(bfm);
+			tilesrl.gameData.levelData[tilesrl.gameData.currentLevel].flatMap = bfm;
+		});		
+	},
+	"goToGamePhase": function(phaseInt) {
+		tilesrl.gameData.phase = phaseInt;
+		switch(phaseInt) {
+			case tilesrl.PHASE_START_GAME:
+				tilesrl.startGame();
+				break;
+			case tilesrl.PHASE_TILE_PLACEMENT:
+				tilesrl.initTilePlacementPhase();
+				break;
+			default:
+				tilesrl.gameData.phase = 0;
+				//noop;
+		}
 	},
 	"initTilePlacementPhase": function() {
-		tilesrl.gameData.phase = 2; // tile placement
+		tilesrl.gameData.phase = tilesrl.PHASE_TILE_PLACEMENT; // tile placement
 
-		// TEMP auto placement
-			let tileMapTemp = tilesrl.generateEmptyTileMap();
-			let fixerRot = [[0,0,0,0,0],[0,1,1,1,0],[0,0,0,1,0],[0,1,1,1,0],[0,0,0,0,0]],
-				fixerRotTile = tilesrl.makeTile(fixerRot);
-			tilesrl.commitTileToMap(tileMapTemp, fixerRot, 0, 0); // starter in upper left (for now)
+		// TEMP, skip user placed tiles and generate it
+		tilesrl.autoGenerateMapFromTiles(function(flatMap){
+			console.log(["DONE!",flatMap]);
+			let dsfm = tilesrl.getScrubbedFlatMap(flatMap),
+				bfm = tilesrl.getPostProcessedFlatMap(dsfm);
+			tilesrl.drawMap(bfm);
+		});
+	},
+	"makeCellMapFromFlatMap" : function(flatMap){
+		let cellMap = {};
+		return cellMap;
+	},
+	"autoGenerateMapFromTiles": function(callbackFunction) {
+		let tileMapTemp = tilesrl.generateEmptyTileMap(),
+			fixerSqArray = [0,0,0,0,0, 0,1,1,1,0, 0,0,0,1,1, 0,1,1,1,0, 0,0,0,0,0],
+			fixerRotTile = tilesrl.makeTile(fixerSqArray),
+			xRand = Math.floor(Math.random() * 5),
+			yRand = Math.floor(Math.random() * 5),
+			eX = xRand * 5,
+			eY = yRand * 5;
+		tilesrl.commitTileToMap(tileMapTemp, fixerRotTile.rot0, xRand, yRand); // starter in random spot
 
-			let autoPlaceTile = function(sr, attempts) {
-				attempts = attempts || 1;
-				if (sr > 0) {
-					let placementSuccess = false,
-					testTile = (attempts < 2) ? tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack) : fixerRotTile,
-					validTilePlacements = tilesrl.getAllValidTilePlacements([0, 0], testTile, tileMapTemp),
-					chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
-					if (validTilePlacements.length == 0) {
-						console.log(["broke at " + sr, testTile, attempts]);
-						if (attempts < 3) {
-							attempts++;
-							autoPlaceTile(sr, attempts);
-						} else {
-							console.log("FUDGE!");
-						}
-						return;
+		let autoPlaceTile = function(sr, attempts) {
+			attempts = attempts || 1;
+			let isDone = false;
+			if (sr > 0) {
+				let placementSuccess = false,
+				testTile = (attempts < 3) ? tilesrl.getRandomFromArray(tilesrl.gameData.levelTileStack) : fixerRotTile,
+				validTilePlacements = tilesrl.getAllValidTilePlacements([0, 0], testTile, tileMapTemp, eX, eY),
+				chosenPlacement = tilesrl.getRandomFromArray(validTilePlacements);
+				if (validTilePlacements.length == 0) {
+					console.log(["broke at " + sr, testTile, attempts]);
+					if (attempts < 5) {
+						attempts++;
+						autoPlaceTile(sr, attempts);
+					} else {
+						// TODO: fill rest of map with walls?
+						console.log(tileMapTemp);
+						console.log("FUDGE!");
+						isDone = true;
 					}
+				} else {
 					let chosenRot = testTile[tilesrl.rotLabels[chosenPlacement[2]]];
 					tilesrl.commitTileToMap(tileMapTemp, chosenRot, chosenPlacement[0], chosenPlacement[1]);
 					placementSuccess = validTilePlacements.length > 0;
@@ -377,22 +427,24 @@ var tilesrl = {
 					setTimeout(function(){
 						autoPlaceTile(sr);
 					},20);
-				} else {
-					let fm = tilesrl.getBasicFlatMap(tileMapTemp),
-						dsfm = tilesrl.getScrubbedFlatMap(fm),
-						bfm = tilesrl.getPostProcessedFlatMap(dsfm);
-					tilesrl.drawMap(bfm);
 				}
-			};
-			// go through deck and place until we fill the map
-			autoPlaceTile(24);
+			} else {
+				isDone = true;
+			}
+			if (isDone) {
+				let fm = tilesrl.getBasicFlatMap(tileMapTemp);
+				callbackFunction(fm);// return the fm
+			}
+		};
+		// go through deck and place until we fill the map
+		autoPlaceTile(24);
 	},
 	/*
 		@entrance: [x,y]
 		@newTile: [[rot0],[rot90],etc]
 		@tileMap: 5*5 reference of map so far
 	*/
-	"getAllValidTilePlacements" : function(entrance, newTile, tileMap) {
+	"getAllValidTilePlacements" : function(entrance, newTile, tileMap, eX, eY) {
 		// get list of open tile spaces that are adjacent to tiles already placed
 		let openTilesAdjacent = [],
 			tmxMax = tilesrl.tileMapCols,
@@ -416,8 +468,6 @@ var tilesrl = {
 
 		// iterate that list, adding specific tile rotations to an array when they are valid there ([tx,ty,rotIdx])
 		let validPlacements = [];
-		let eX = entrance[0],
-			eY = entrance[1];
 		for (let t = 0; t < openTilesAdjacent.length; t++) {
 			let tileMapCopy = tilesrl.makeCopyOfMultidimensionalArray(tileMap);
 			let x = openTilesAdjacent[t][0],
@@ -444,6 +494,103 @@ var tilesrl = {
 			}
 		}
 		return validPlacements;
+	},
+	"getShortestPath": function(startPoint, goalPoint, flatMap) {
+		let sX = startPoint[0],
+			sY = startPoint[1],
+			gX = goalPoint[0],
+			gY = goalPoint[1],
+			queue = [{
+				"x": sX,
+				"y": sY,
+				"path": [],
+				"status": flatMap[sX][sY] // SHOULD be 0, floor
+			}],
+			grid = [];
+
+			// init the 'grid' object to track visited, obstacle, empty
+			let xlen = flatMap.length,
+				ylen = flatMap[0].length;
+			for (let x = 0; x < xlen; x++) {
+				grid.push([]);
+				for (let y = 0; y < ylen; y++) {
+					grid[x].push((flatMap[x][y] <= 0) ? "empty" : "obstacle");
+					if (x == gX && y == gY) {
+						grid[x][y] = "goal";
+					}
+				}
+			}
+
+			let exploreInDirection = function(currentLocation, direction, grid) {
+				let newPath = currentLocation.path.slice();
+				newPath.push(direction);
+
+				let x = currentLocation.x,
+					y = currentLocation.y;
+
+				let cInDir = tilesrl.getCoordInDirection(direction, x, y);
+				x = cInDir[0];
+				y = cInDir[1];
+				let newLocation = {
+					"x": x,
+					"y": y,
+					"path": newPath,
+					"status": "unknown"
+				};
+				newLocation.status = locationStatus(newLocation, grid);
+
+				if (newLocation.status === "valid") {
+					grid[x][y] = "visited";
+				}
+
+				return newLocation;
+			};
+
+			let locationStatus = function(newLocation, grid) {
+				let x = newLocation.x,
+					y = newLocation.y;
+				if (x < 0
+					|| y < 0
+					|| x >= grid.length
+					|| y >= grid[0].length) {
+					return "invalid";
+				} else if (grid[x][y] === "goal") {
+					return "goal";
+				} else if (grid[x][y] != "empty") {
+					return "blocked";
+				} else {
+					return "valid";
+				}
+			};
+
+			while (queue.length > 0) {
+				let currentLocation = queue.shift();
+				var dirs = [1,3,5,7];
+				for (let d = 0; d < dirs.length; d++) {
+					let newLocation = exploreInDirection(currentLocation, dirs[d], grid);
+					if (newLocation.status === "goal") {
+						return newLocation.path;
+					} else if (newLocation.status === "valid") {
+						queue.push(newLocation);
+					}
+				}
+			}
+			return false;
+	},
+	"highlightPathFromTo": function(startPoint, goalPoint, flatMap) {
+		$(".pathHighlight").removeClass("pathHighlight");
+		let sp = tilesrl.getShortestPath(startPoint, goalPoint, flatMap),
+			x = startPoint[0],
+			y = startPoint[1];
+		if (sp) {
+			while (sp.length > 0) {
+				let d = sp.shift();
+				let cid = tilesrl.getCoordInDirection(d,x,y);
+				x = cid[0];
+				y = cid[1];
+				$(".x"+x+".y"+y).addClass("pathHighlight");
+			}
+		}
 	},
 	"canPathToTile": function(flatMap, sqx, sqy, tx, ty) {
 		// from a specific square, can we path to (follow open squares) ANY open square in tx,ty/tx+5,ty+5 range?
@@ -570,6 +717,39 @@ var tilesrl = {
 	},
 	"makeCopyOfMultidimensionalArray": function(tm) {
 		return JSON.parse(JSON.stringify(tm));
+	},
+	"getCoordInDirection": function(d,x,y) {
+		switch (d) {
+			case 0:
+				y--;
+				x--;
+				break;
+			case 1:
+				y--;
+				break;
+			case 2:
+				y--;
+				x++;
+				break;
+			case 3:
+				x++;
+				break;
+			case 4:
+				x++;
+				y++;
+				break;
+			case 5:
+				y++;
+				break;
+			case 6:
+				x--;
+				y++;
+				break;
+			case 7:
+				x--;
+				break;
+		}
+		return [x,y];
 	},
 
 	/** debug stuff **/

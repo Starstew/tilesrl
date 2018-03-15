@@ -6,38 +6,45 @@
 	display: inline-block;
 	width: 20px;
 	height: 20px;
-	border: dotted 1px rgba(200,200,200,0.5);
+	border: dotted 1px rgba(50,50,50,0.5);
 }
+
 .testSquare:nth-of-type(5n+0) {
 	xborder-right-color: yellow;
 }
 .testSquare.wall {
 	background-color: #111;
+	border-color: transparent;
 }
 .wall.nwcorn {
-	border-radius: 2px 0 0 0;
+	border-radius: 3px 0 0 0;
 }
 .wall.necorn {
-	border-radius: 0 2px 0 0;
+	border-radius: 0 3px 0 0;
 }
 .wall.secorn {
-	border-radius: 0 0 2px 0;
+	border-radius: 0 0 3px 0;
 }
 .wall.swcorn {
-	border-radius: 0 0 0 2px;
+	border-radius: 0 0 0 3px;
 }
 .wall.ncap {
-	border-radius: 2px 2px 0 0;
+	border-radius: 3px 3px 0 0;
 }
 .wall.ecap {
-	border-radius: 0 2px 2px 0;
+	border-radius: 0 3px 3px 0;
 }
 .wall.scap {
-	border-radius: 0 0 2px 2px;
+	border-radius: 0 0 3px 3px;
 }
 .wall.wcap {
-	border-radius: 2px 0 0 2px;
+	border-radius: 3px 0 0 3px;
 }
 .testSquare.corridor {
 	background-color: #9f9f9f;
+}
+
+.testSquare.pathHighlight,
+.testSquare.corridor.pathHighlight {
+	background-color: yellow;
 }
